@@ -1,11 +1,11 @@
-# Linux Note
+[TOC]
 
-[toc]
+# Linux Note
 
 ## VMware 
 ---
 
-- 桥接模式可以直接使用主机的网络连接访问
+- 桥接模式可以访问
 
 ## QSPI启动
 ---
@@ -68,6 +68,7 @@ quartus_cpf -c -o bitstream_compression=on ~/a10_soc_devkit_ghrd/output_files/gh
 Note that we are == not using the "--hps"== option, since for booting from QSPI we are using **just a single combined rbf file**, containing both the I/O configuration and the FPGA fabric configuration.
 
 `quartus_cpf -c --hps -o bitstream_compression=on output_files/ghrd_10as066n2.sof output_files/ghrd_10as066n2.rbf`
+
 使用这个命令将会生成两个分离的rbf文件：*.core.rbf + *.periph.rbf
 
 7. 在rbf文件的头部添加U-Boot mkimage头文件(U-Boot mkimge header):
@@ -130,10 +131,52 @@ quartus_hps --cable=1 --operation=PV --addr=0x720000 ghrd_10as066n2.rbf.mkimage
 
 这会触发开发板的冷重启(cold reset)。
 
-### Linux kernel和文件系统
+### 编译生成Linux kernel和文件系统
 
-1. adfsadfasdfasdf
-ffffff kkkkkk
+1. 编译kernel
+生成zImage
+
+2. device tree
+
+3. 文件系统
+
+### 烧写Kernel、Device Tree、文件系统
+
+1. 在tftp服务器上更新所有需要的文件
+
+2. 进入U-boot控制台（在boot的5s倒计时的时候按任意键打断，进入控制台）
+
+3. 根据QSPI Flash的内存分布擦除Kernel、Device Tree、文件系统要写入的区域（跟新之前最好要擦除）
+
+``` cpp
+sf probe
+sf erase 0x00100000 0x00020000
+sf erase 0x00120000 0x00600000
+sf erase 0x01C00000 0x06400000
+```
+
+注：可以连接Usb-blasterII使用HPS Flash Programmer命令来擦除，耗时更少，命令如下：
+
+``` cpp
+~/altera/15.0/embedded/embedded_command_shell.sh
+quartus_hps --cable=1 --operation=E --addr=0x00100000 --size=0x00020000
+quartus_hps --cable=1 --operation=E --addr=0x00120000 --size=0x00600000
+quartus_hps --cable=1 --operation=E --addr=0x01C00000 --size=0x06400000
+```
+
+4. 在U-Boot 控制台中，下载文件并写入Flash
+``` cpp
+tftp $loadaddr socfpga_arria10_socdk_qspi.dtb
+sf write $loadaddr 0x0100000 $filesize
+
+tftp $loadaddr zImage
+sf write $loadaddr 0x00120000 $filesize
+
+tftp $loadaddr console-image-qspi-arria10.jffs2
+sf write $loadaddr 0x01C00000 $filesize
+``` 
+
+
 
 ## SDMMC启动模式
 ---
@@ -151,8 +194,8 @@ ffffff kkkkkk
 
 3.写入环境变量：交叉编译工具链的路径和ARCH
 ```
-$ export CROSS_COMPILE=~/linux
 $ export CROSS_COMPILE=~/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
+$ export ARCH=arm
 ```
 4.编译内核
 ```
@@ -286,31 +329,52 @@ Please move or remove them before you can switch branches.
 
 ### TFTP服务
 
-#### 在Windows平台搭建tftp服务器
+1. 在Windows平台搭建tftp服务器
 
-使用小软件tftpd32.exe(Tftpd32 by Ph.Jouin) 即可自动搭建tftp服务器，需要注意Current Directory必须是存放使用tftp服务的文件目录，可以使用Show Dir来检查文件目录的内容。选择网卡，不用任何操作即可提供tftp服务（也许需要打开tftp服务？ 控制面板 -> 程序和功能 -> 启用或关闭Windows功能 -> [x] TFTP客户端
+使用小软件tftpd32.exe(Tftpd32 by Ph.Jouin) 即可自动搭建tftp服务器，需要注意Current Directory必须是存放使用tftp服务的文件目录，可以使用Show Dir来检查文件目录的内容。选择网卡，不用任何操作即可提供tftp服务（也许需要打开tftp服务？ 控制面板 -> 程序和功能 -> 启用或关闭Windows功能 -> [x] TFTP客户端）
 
-#### 在Linux平台搭建tftp服务器
+2. 在Linux平台搭建tftp服务器
+
+略 还没搞定-。-
 
 
+3. 使用busybox的tftp服务
 
-#### 使用busybox的tftp服务
+kernel加载完毕，登录linux后，使用的busybox提供的tftp服务，使用方法如下：
 
-在开发板的命令行中输入
-          ``` tftp -l a.txt -r a.txt -g 192.168.1.21 69 ```
+#### 下载文件
 
-          参数说明：-l   是local的缩写，后跟本地或下载到本地后重命名的文件名。    
-                    -r  是remote的缩写，后跟远程即PC机tftp服务器根目录中的文件名，或上传到PC机后重命名后的文件名。
-                    -g  是get的缩写，下载文件时用，后跟PC机的IP地址
-                    -p  是put的缩写，上传文件时用，后跟PC机的IP地址
-                    tftp 默认占用的是69端口。
+从在开发板的命令行中输入          
+    ``` tftp -l a.txt -r a.txt -g 192.168.1.21 69 ```
+
+
+    参数说明：
+        -l   是local的缩写，后跟本地或下载到本地后重命名的文件名。    
+        -r   是remote的缩写，后跟远程即PC机tftp服务器根目录中的文件名，或上传到PC机后重命名后的文件名。
+        -g   是get的缩写，下载文件时用，后跟PC机的IP地址
+        -p   是put的缩写，上传文件时用，后跟PC机的IP地址
+        tftp 默认占用的是69端口。
 
 注意：下载或上传文件时，文件名最好相同，否则会出现得到了文件，但文件大小却是 0k 的尴尬现象。如果出现了这种现象，请多敲几次命令，在 -l   -r  和 -g 前面多放几个空格，例如
                    ``` tftp  -l a.txt  -r a.txt  -g 192.168.1.21 69 ```
 
 默认下载到开发板的当前目录。
 
-上传文件：将开发板当前目录的某个文件上传到tftp服务器根目录。
+#### 上传文件
+
+将开发板当前目录的某个文件上传到tftp服务器根目录。
 命令：     ```tftp -l a.txt -r a.txt -p 192.168.1.21 69```
 
 当然我们假设tftp服务器根目录不存在a.txt这个文件，当运行这个命令后，就会在tftp服务器根目录中发现这个文件。
+
+4. 使用U-Boot命令行中的tftp
+
+如果系统需要更新，最好在Linux启动前进行更新操作。重新上电开发板，在U-Boot准备启动boot时，按下任意键停止boot，进入U-Boot命令行。
+
+首先，设置开发板的IP和tftp服务器的IP，两个IP要在同一网段:
+``` cpp
+setenv ipaddr 10.3.56.241
+setenv serverip 10.3.56.178
+```
+
+下载文件：
