@@ -5,7 +5,7 @@
 ## VMware 
 ---
 
-- 桥接模式可以访问
+- 桥接模式可以直接使用主机的网络连接访问互联网
 
 ## QSPI启动
 ---
@@ -150,9 +150,9 @@ quartus_hps --cable=1 --operation=PV --addr=0x720000 ghrd_10as066n2.rbf.mkimage
 
 ``` cpp
 sf probe
-sf erase 0x00100000 0x00020000
-sf erase 0x00120000 0x00600000
-sf erase 0x01C00000 0x06400000
+sf erase 0x00100000 0x00020000   //device tree *.dtb
+sf erase 0x00120000 0x00600000   //kernel
+sf erase 0x01C00000 0x06400000   //rootfs
 ```
 
 注：可以连接Usb-blasterII使用HPS Flash Programmer命令来擦除，耗时更少，命令如下：
@@ -255,28 +255,37 @@ $ sudo umount sdcard
  
 首先，你需要使用
 
-```
- $ git clone
-```
+``` $ git clone```
 
 这个命令克隆一个本地库。
 之后它会自动克隆一个master分支（这个貌似是必须的）。
 之后不会克隆任何一个分支下来的。
-假定你需要一个dev（此处假定远程库中已经存在此分支，也就是你需要克隆的）分支用于开发的话，你需要在dev分支上开发，就必须创建远程origin的dev分支到本地，于是他用这个命令创建本地dev分支：
+假定你需要一个dev（此处假定远程库中已经存在此分支，也就是你需要克隆的）分支用于开发的话，你需要在dev分支上开发，就必须创建远程origin的dev分支到本地，于是用这个命令创建本地dev分支：
 
-```
-$ git checkout -b dev origin/dev
-```
+```$ git checkout -b test_dev origin/dev```
 
 再同步下：
 
-```
-$ git pull
-```
+```$ git pull```
 
-这样就实现了克隆dev分支。创建的本地分支``` dev ```让你可以push这个分支的修改(当然，要有创建者许可)
+这样就实现了克隆dev分支，使用```git branch```可以查看当前处于哪一个分支。
+创建的本地分支``` test_dev ```让你可以push这个分支的修改(当然，要有创建者许可)
 
-### Git错误汇总
+### Git分支操作
+
+1. 切换到要操作的项目文件夹
+命令: ```$ cd <ProjectPath>```
+
+2. 查看项目的所有分支(包括本地和远程)
+命令：```$ git branch -a```
+
+3. 删除本地分支
+命令：```$ git branch -d <BranchName>```
+
+4. 删除远程分支
+命令：```$ git push origin --delete <BranchName>```
+
+### Git报错汇总
 
 1. Please move or remove them before you can switch branches
 
@@ -377,4 +386,7 @@ setenv ipaddr 10.3.56.241
 setenv serverip 10.3.56.178
 ```
 
-下载文件：
+下载文件:
+
+
+
