@@ -1,0 +1,1 @@
+#define UTS_RELEASE "4.9.78-ltsi-06689-g2314712"
