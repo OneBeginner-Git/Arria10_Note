@@ -1,5 +1,20 @@
 # Linux驱动
 
+## 板级文件--board.c
+
+```cpp
+MACHINE_START(DAVINCI_DM365_EVM, "DaVinci DM365 EVM")
+	.atag_offset	= 0x100,
+	.map_io		= dm365_evm_map_io,
+	.init_irq	= davinci_irq_init,
+	.init_time	= davinci_timer_init,
+	.init_machine	= dm365_evm_init,
+	.init_late	= davinci_init_late,
+	.dma_zone_size	= SZ_128M,
+	.restart	= davinci_restart,
+MACHINE_END
+```
+
 ## SPI 驱动
 
 >参考博客园博客总结写成：https://www.cnblogs.com/jason-lu/articles/3165327.html
