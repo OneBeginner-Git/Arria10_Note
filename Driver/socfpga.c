@@ -21,12 +21,16 @@
 #include <linux/reboot.h>
 #include <linux/slab.h>
 #include <linux/sys_soc.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/spidev.h>
+
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/cacheflush.h>
 
+#include "socfpga.h"
 #include "core.h"
 
 void __iomem *sys_manager_base_addr;
@@ -184,12 +188,26 @@ static void socfpga_arria10_restart(enum reboot_mode mode, const char *cmd)
 	writel(temp, rst_manager_base_addr + SOCFPGA_A10_RSTMGR_CTRL);
 }
 
+static struct spi_board_info socfpga_spi_info[] __initconst = {
+	{
+		.modalias	= "at25",
+		.platform_data	= &at25640,
+		.max_speed_hz	= 2 * 1000 * 1000, //2M
+		.bus_num	= 0,
+		.chip_select	= 0,
+		.mode		= SPI_MODE_0,
+	},
+};
+
 static void __init socfpga_init(void)
 {
 	of_platform_populate(NULL, of_default_bus_match_table,
 			     NULL, NULL);
 	enable_periphs();
 	socfpga_soc_device_init();
+
+	a10_init_spi0(BIT(0), socfpga_spi_info,
+			ARRAY_SIZE(socfpga_spi_info));
 }
 
 static const char *altera_dt_match[] = {

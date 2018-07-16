@@ -1905,7 +1905,8 @@ int spi_register_master(struct spi_master *master)
 	/* even if it's just one always-selected device, there must
 	 * be at least one chipselect
 	 */
-	if (master->num_chipselect == 0)
+	if (master->num_chipselect == 0)/*SPI主控制器支持的片选数不能为0，不然没法挂载从设备。一个接口(SPIx)对应一个master,一个
+	master对应一条SPI总线，一条线上可以挂多个设备，num_chipselect表示这条总线支持的设备数量*/
 		return -EINVAL;
 
 	if ((master->bus_num < 0) && master->dev.of_node)
@@ -1934,7 +1935,7 @@ int spi_register_master(struct spi_master *master)
 	 * registration fails if the bus ID is in use.
 	 */
 	dev_set_name(&master->dev, "spi%u", master->bus_num);
-	status = device_add(&master->dev);
+	status = device_add(&master->dev); /*向内核注册设备*/
 	if (status < 0)
 		goto done;
 	dev_dbg(dev, "registered master %s%s\n", dev_name(&master->dev),
@@ -1954,7 +1955,7 @@ int spi_register_master(struct spi_master *master)
 	spin_lock_init(&master->statistics.lock);
 
 	mutex_lock(&board_lock);
-	list_add_tail(&master->list, &spi_master_list);
+	list_add_tail(&master->list, &spi_master_list);/*把这个SPI master添加进全局的spi_master_list链表*/
 	list_for_each_entry(bi, &board_list, list)
 		spi_match_master_to_boardinfo(master, &bi->board_info);
 	mutex_unlock(&board_lock);
