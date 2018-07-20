@@ -30,7 +30,7 @@
 #include <asm/mach/map.h>
 #include <asm/cacheflush.h>
 
-#include "socfpga.h"
+#include "socfpga-all.h"
 #include "core.h"
 
 void __iomem *sys_manager_base_addr;

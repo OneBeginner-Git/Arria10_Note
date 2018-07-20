@@ -5,20 +5,40 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
 #include <linux/spi/spi.h>
-#include <linux/spi/spidev.h>
+#include <linux/platform_data/spi-davinci.h>
 
-#include "socfpga.h"
+#include "socfpga-all.h"
+
+static struct resource a10_spi0_resources[] = {
+	/*{
+		.start = 0x01c66000,
+		.end   = 0x01c667ff,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = IRQ_DM365_SPIINT0_0,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.start = 17,
+		.flags = IORESOURCE_DMA,
+	},
+	{
+		.start = 16,
+		.flags = IORESOURCE_DMA,
+	},*/
+};
 
 static struct platform_device a10_spi0_device = {
-	.name = "spidev",
+	.name = "spi_altera",
 	.id = 0,
 	.dev = {
-		.dma_mask = &dm365_spi0_dma_mask,
+		.dma_mask = &a10_spi0_dma_mask,
 		.coherent_dma_mask = DMA_BIT_MASK(32),
-		.platform_data = &dm365_spi0_pdata,
+		.platform_data = &a10_spi0_pdata,
 	},
-	.num_resources = ARRAY_SIZE(dm365_spi0_resources),
-	.resource = dm365_spi0_resources,
+	.num_resources = ARRAY_SIZE(a10_spi0_resources),
+	.resource = a10_spi0_resources,
 };
 
 void __init a10_init_spi0(unsigned chipselect_mask,
