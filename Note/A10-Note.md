@@ -136,7 +136,31 @@ quartus_hps --cable=1 --operation=PV --addr=0x720000 ghrd_10as066n2.rbf.mkimage
 1. 编译kernel
 生成zImage
 
+编译步骤：
+
+>每次打开控制台都要配置环境变量，或者也可以写环境变量文件然后使用```source```命令更新
+
+1.打开控制台
+2.跳转到linux-socfpga的目录，内核编译所需的文件来自github上的更新
+
+```$ cd ~/linux-socfpga```
+
+3.写入环境变量：交叉编译工具链的路径和ARCH
+```
+$ export CROSS_COMPILE=~/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
+$ export ARCH=arm
+```
+4.编译内核
+```
+$ make socfpga_defconfig
+$ make zImage
+```
+
 2. device tree
+dts文件，dtb文件
+
+修改后的dts文件直接生成dtb文件，可以在SoC EDS Command Shell使用命令：
+`dtc -I dts -O dtb -o ghrd_spi_test.dtb ghrd_spi_test.dts`
 
 3. 文件系统
 
@@ -284,6 +308,13 @@ $ sudo umount sdcard
 
 4. 删除远程分支
 命令：```$ git push origin --delete <BranchName>```
+
+### git如何放弃所有本地修改
+
+`git checkout .` #本地所有修改的。没有的提交的，都返回到原来的状态
+`git stash` #把所有没有提交的修改暂存到stash里面。可用git stash pop回复。
+`git reset --hard HASH` #返回到某个节点，不保留修改。
+`git reset --soft HASH` #返回到某个节点。保留修改
 
 ### Git报错汇总
 

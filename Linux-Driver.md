@@ -1,7 +1,13 @@
 # Linux驱动
 
+## device tree 设备树
+
+### 
+
+
 ## 板级文件--board.c
 
+### 宏定义-MACHINE_START
 ```cpp
 MACHINE_START(DAVINCI_DM365_EVM, "DaVinci DM365 EVM")
 	.atag_offset	= 0x100,
@@ -14,6 +20,33 @@ MACHINE_START(DAVINCI_DM365_EVM, "DaVinci DM365 EVM")
 	.restart	= davinci_restart,
 MACHINE_END
 ```
+
+### resource类型
+
+平台设备主要是提供设备资源和平台数据给平台驱动，resource为设备资源数组，类型有IORESOURCE_IO、IORESOURCE_MEM、IORESOURCE_IRQ、IORESOURCE_DMA、IORESOURCE_DMA。下面是一个网卡芯片DM9000的外设资源：
+
+```cpp
+static struct resource dm9000_resources[] = {
+    [0] = {
+        .start        = S3C64XX_PA_DM9000,
+        .end        = S3C64XX_PA_DM9000 + 3,
+        .flags        = IORESOURCE_MEM,
+    },
+    [1] = {
+        .start        = S3C64XX_PA_DM9000 + 4,
+        .end        = S3C64XX_PA_DM9000 + S3C64XX_SZ_DM9000 - 1,
+        .flags        = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start        = IRQ_EINT(7),
+        .end        = IRQ_EINT(7),
+        .flags        = IORESOURCE_IRQ | IRQF_TRIGGER_HIGH,
+    },
+};
+```
+
+dm9000_resources里面有三个设备资源，第一个为IORESOURCE_MEM类型，指明了第一个资源内存的起始地址为S3C64XX_PA_DM9000结束地址为S3C64XX_PA_DM9000 + 3，第二个同样为IORESOURCE_MEM类型，指明了第二个资源内存的起始地址为S3C64XX_PA_DM9000 + 4结束地址为S3C64XX_PA_DM9000 + S3C64XX_SZ_DM9000 - 1，第三个为IORESOURCE_IRQ类型，指明了中断号为IRQ_EINT(7)。
+
 
 ## SPI 驱动
 
@@ -52,13 +85,13 @@ void __init dm365_init_spi0(unsigned chipselect_mask,
 	if (chipselect_mask & BIT(1))
 		davinci_cfg_reg(DM365_SPI0_SDENA1);
 
-	spi_register_board_info(info, len);
+	spi_register_board_info(info, len);//将spi从设备的信息添加到板级信息链表中去
 
 	platform_device_register(&dm365_spi0_device);
 }
 ```
 
-- 可以看到info参数最终是传递给了`spi_register_board_info()`使用，这个函数可以注册所有需要的spi设备。函数里还有一个局部结构体指针变量--`struct boardinfo`，定义在drivers/spi/spi.c中。这个结构是一个板级相关信息链表,就是说它是一些描述spi_device的信息的集合.结构体boardinfo管理多个结构体spi_board_info,结构体spi_board_info中挂在SPI总线上的设备的平台信息.一个结构体spi_board_info对应着一个SPI设备spi_device.
+- 可以看到info参数最终是传递给了`spi_register_board_info()`使用，这个函数可以注册所有需要的spi从设备。函数里还有一个局部结构体指针变量--`struct boardinfo`，定义在drivers/spi/spi.c中。这个结构是一个板级相关信息链表,就是说它是一些描述spi_device的信息的集合.结构体boardinfo管理多个结构体spi_board_info,结构体spi_board_info中挂在SPI总线上的设备的平台信息.一个结构体spi_board_info对应着一个SPI设备spi_device.
 同时我们也看到了,函数中出现的board_list和spi_master_list都是全局的链表,它们分别记录了系统中所有的boardinfo和所有的spi_master.
 
 ```java
@@ -106,7 +139,7 @@ struct boardinfo {
 };
 
 ```
-`platform_device_register()`用来注册平台设备，参数就是platform_device类型的结构体变量
+接下来`platform_device_register()`用来注册平台设备，参数就是platform_device类型的结构体变量
 
 ```java
 /**
@@ -125,16 +158,6 @@ EXPORT_SYMBOL_GPL(platform_device_register);
 Linux设备模型常识告诉我们,当系统中注册了一个名为"spi_davinci"的==platform_device==时,同时又注册了一个名为"spi_davinci"的==platform_driver==.那么就会执行这里的probe回调.
 
 ```java
-//platform_driver 在 spi-davinci.c
-static struct platform_driver davinci_spi_driver = {
-	.driver = {
-		.name = "spi_davinci",
-		.of_match_table = of_match_ptr(davinci_spi_of_match),
-	},
-	.probe = davinci_spi_probe,
-	.remove = davinci_spi_remove,
-};
-
 //platform_device 在 dm365.c
 static struct platform_device dm365_spi0_device = {
 	.name = "spi_davinci",
@@ -148,6 +171,17 @@ static struct platform_device dm365_spi0_device = {
 
 	.resource = dm365_spi0_resources,
 };
+
+//platform_driver 在 spi-davinci.c
+static struct platform_driver davinci_spi_driver = {
+	.driver = {
+		.name = "spi_davinci",
+		.of_match_table = of_match_ptr(davinci_spi_of_match),
+	},
+	.probe = davinci_spi_probe,
+	.remove = davinci_spi_remove,
+};
+
 ```
 
 **相对应的，对于altera平台的设备：**
@@ -164,7 +198,9 @@ static struct platform_driver altera_spi_driver = {
 		.pm = NULL,
 		.of_match_table = of_match_ptr(altera_spi_match),
 	},
-}static struct platform_driver altera_spi_driver = {
+}
+
+static struct platform_driver altera_spi_driver = {
 	.probe = altera_spi_probe,
 	.remove = altera_spi_remove,
 	.driver = {
