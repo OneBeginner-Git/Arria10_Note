@@ -18,37 +18,37 @@ The input to this flow is the GHRD delivered with SoC EDS, while the output is a
 
 1. Make a copy of the Hardware Design, from the archive delivered with @SoC EDS.
 
-```
-~/altera/15.0/embedded/embedded_command_shell.sh
-cd ~
-mkdir a10_soc_devkit_ghrd_qspi
-cd a10_soc_devkit_ghrd_qspi/
-tar xvzf ~/altera/15.0/embedded/examples/hardware/a10_soc_devkit_ghrd/tgz/*.tar.gz
+```s
+$ ~/altera/15.0/embedded/embedded_command_shell.sh
+$ cd ~
+$ mkdir a10_soc_devkit_ghrd_qspi
+$ cd a10_soc_devkit_ghrd_qspi/
+$ tar xvzf ~/altera/15.0/embedded/examples/hardware/a10_soc_devkit_ghrd/tgz/*.tar.gz
 ```
 
 2. Update the Hardware Design makefile to enable booting from QSPI:
 
-```
-sed -i 's/HPS_BOOT_DEVICE := SDMMC/HPS_BOOT_DEVICE := QSPI/g' Makefile
+```s
+$ sed -i 's/HPS_BOOT_DEVICE := SDMMC/HPS_BOOT_DEVICE := QSPI/g' Makefile
 ```
 
 3. Update the Hardware Design makefile to create just a single RBF file instead of two.
 
-```
-sed -i 's/QUARTUS_CPF_ENABLE_SPLIT_RBF := 1/QUARTUS_CPF_ENABLE_SPLIT_RBF := 0/g' Makefile
+```s
+$ sed -i 's/QUARTUS_CPF_ENABLE_SPLIT_RBF := 1/QUARTUS_CPF_ENABLE_SPLIT_RBF := 0/g' Makefile
 ```
 
 4. Update the hardware design:
 
-```
-make scrub_clean
-make quartus_generate_top quartus_generate_qsf_qpf qsys_generate_qsys
+```s
+$ make scrub_clean
+$ make quartus_generate_top quartus_generate_qsf_qpf qsys_generate_qsys
 ```
 
 5. Compile the hardware design:
 
-```
-make sof
+```s
+$ make sof
 ```
 
 This will create the hardware configuration file **~/a10_soc_devkit_ghrd/output_files/ghrd_10as066n2.sof** and also the handoff information in the folder **hps_isw_handoff**.
@@ -56,8 +56,8 @@ Note that compiling the hardware desing can also be done using the instructions 
 
 6. Generate the rbf file:
 
-```
-make rbf
+```s
+$ make rbf
 ```
 
 This will create the following file: **~/a10_soc_devkit_ghrd/output_files/ghrd_10as066n2.rbf.**
@@ -73,7 +73,7 @@ Note that we are == not using the "--hps"== option, since for booting from QSPI 
 
 7. 在rbf文件的头部添加U-Boot mkimage头文件(U-Boot mkimge header):
 
-```
+```s
 mkimage -A arm -T firmware -C none -O u-boot -a 0 -e 0 -n "RBF" \
    -d output_files/ghrd_10as066n2.rbf \
    output_files/ghrd_10as066n2.rbf.mkimage
@@ -89,7 +89,7 @@ This will create the following file: **~/a10_soc_devkit_ghrd/output_files/ghrd_1
 
 启动SoC EDS的Embedded Command Shell，然后打开bsp-editor
 
-```
+```s
 dark@dark-virtual-machine:~/altera/15.1/embedded$ ./embedded_command_shell.sh 
 WARNING: DS-5 install not detected. SoC EDS may not function correctly without a DS-5 install.
 ------------------------------------------------
@@ -118,7 +118,7 @@ dark@dark-virtual-machine:~/altera/15.1/embedded$ bsp-editor
 
 运行Command Shell，在Embedded Command Shell下执行烧写的命令（注意各文件的路径）：
 
-```
+```s
 ~/altera/15.0/embedded/embedded_command_shell.sh
 cd ~/a10_soc_devkit_ghrd_qspi
 quartus_hps --cable=1 --operation=PV --addr=0x0 uboot_w_dtb-mkpimage.bin
@@ -133,7 +133,7 @@ quartus_hps --cable=1 --operation=PV --addr=0x720000 ghrd_10as066n2.rbf.mkimage
 
 ### 编译生成Linux kernel和文件系统
 
-1. 编译kernel
+#### 1. 编译kernel
 生成zImage
 
 编译步骤：
@@ -141,28 +141,34 @@ quartus_hps --cable=1 --operation=PV --addr=0x720000 ghrd_10as066n2.rbf.mkimage
 >每次打开控制台都要配置环境变量，或者也可以写环境变量文件然后使用```source```命令更新
 
 1.打开控制台
-2.跳转到linux-socfpga的目录，内核编译所需的文件来自github上的更新
+2.跳转到linux-socfpga的目录，内核编译所需的文件来自github上的开源代码
 
 ```$ cd ~/linux-socfpga```
 
 3.写入环境变量：交叉编译工具链的路径和ARCH
-```
+```s
 $ export CROSS_COMPILE=~/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
 $ export ARCH=arm
 ```
 4.编译内核
-```
+```s
 $ make socfpga_defconfig
 $ make zImage
 ```
 
-2. device tree
-dts文件，dtb文件
+#### 2. Device Tree(dts文件，dtb文件)
 
 修改后的dts文件直接生成dtb文件，可以在SoC EDS Command Shell使用命令：
+
 `dtc -I dts -O dtb -o ghrd_spi_test.dtb ghrd_spi_test.dts`
 
-3. 文件系统
+`dtc -I dts -O dtb -o ghrd_spi_test_sd.dtb ghrd_spi_test_sd.dts`
+
+`dtc -I dts -O dtb -o ghrd_spi_test_qspi.dtb ghrd_spi_test_qspi.dts`
+
+#### 3. 文件系统
+
+略
 
 ### 烧写Kernel、Device Tree、文件系统
 
@@ -172,7 +178,7 @@ dts文件，dtb文件
 
 3. 根据QSPI Flash的内存分布擦除Kernel、Device Tree、文件系统要写入的区域（跟新之前最好要擦除）
 
-``` cpp
+```s
 sf probe
 sf erase 0x00100000 0x00020000   //device tree *.dtb
 sf erase 0x00120000 0x00600000   //kernel
@@ -181,7 +187,7 @@ sf erase 0x01C00000 0x06400000   //rootfs
 
 注：可以连接Usb-blasterII使用HPS Flash Programmer命令来擦除，耗时更少，命令如下：
 
-``` cpp
+```s
 ~/altera/15.0/embedded/embedded_command_shell.sh
 quartus_hps --cable=1 --operation=E --addr=0x00100000 --size=0x00020000
 quartus_hps --cable=1 --operation=E --addr=0x00120000 --size=0x00600000
@@ -189,7 +195,7 @@ quartus_hps --cable=1 --operation=E --addr=0x01C00000 --size=0x06400000
 ```
 
 4. 在U-Boot 控制台中，下载文件并写入Flash
-``` cpp
+```s
 tftp $loadaddr socfpga_arria10_socdk_qspi.dtb
 sf write $loadaddr 0x0100000 $filesize
 
@@ -202,10 +208,14 @@ sf write $loadaddr 0x01C00000 $filesize
 
 
 
-## SDMMC启动模式
+## SD/eMMC启动模式
 ---
 
-### Linux内核
+### 生成Linux Device Tree(dts,dtb)
+
+
+
+### 编译Linux内核
 
 编译步骤：
 
@@ -227,8 +237,44 @@ $ make socfpga_defconfig
 $ make zImage
 ```
 
-### Linux文件系统
+### 生成Linux文件系统
 
+略（受限于网络问题，无法更新到本地库。尝试自己的文件系统？jfss2文件应该就可以。见DeviceTree文件中对于flash的分区，SD卡和qspi flash启动分区略有不同
+```java
+			flash0: n25q00@0 {
+				#address-cells = <1>;	/* appended from boardinfo */
+				#size-cells = <1>;	/* appended from boardinfo */
+				compatible = "n25q00aa";	/* appended from boardinfo */
+				reg = <0>;	/* appended from boardinfo */
+				spi-max-frequency = <50000000>;	/* appended from boardinfo */
+				m25p,fast-read;	/* appended from boardinfo */
+				page-size = <256>;	/* appended from boardinfo */
+				block-size = <16>;	/* appended from boardinfo */
+				read-delay = <3>;	/* appended from boardinfo */
+				tshsl-ns = <200>;	/* appended from boardinfo */
+				tsd2d-ns = <255>;	/* appended from boardinfo */
+				tchsh-ns = <20>;	/* appended from boardinfo */
+				tslch-ns = <20>;	/* appended from boardinfo */
+				cdns,page-size = <256>;	/* appended from boardinfo */
+				cdns,block-size = <16>;	/* appended from boardinfo */
+				cdns,read-delay = <3>;	/* appended from boardinfo */
+				cdns,tshsl-ns = <200>;	/* appended from boardinfo */
+				cdns,tsd2d-ns = <255>;	/* appended from boardinfo */
+				cdns,tchsh-ns = <20>;	/* appended from boardinfo */
+				cdns,tslch-ns = <20>;	/* appended from boardinfo */
+
+				part0: partition@0 {
+					label = "Boot and FPGA data";	/* appended from boardinfo */
+					reg = <0x00000000 0x01c00000>;	/* appended from boardinfo */
+				}; //end partition@0 (part0)
+
+				part1: partition@1C00000 {
+					label = "Root Filesystem - JFFS2";	/* appended from boardinfo */
+					reg = <0x01c00000 0x06400000>;	/* appended from boardinfo */
+				}; //end partition@1C00000 (part1)
+			}; //end n25q00@0 (flash0)
+
+```
 ### 更新SD卡
 
 1. 更新系统所需的文件(zImage rbf_file dtb)
