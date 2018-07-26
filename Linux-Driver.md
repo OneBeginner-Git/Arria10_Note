@@ -2,8 +2,37 @@
 
 ## device tree 设备树
 
-### 
+### Device Tree基本概念和作用
 
+在内核源码中，存在大量对板级细节信息描述的代码。这些代码充斥在/arch/arm/plat-xxx和/arch/arm/mach-xxx目录，对内核而言这些platform设备、resource、i2c_board_info、spi_board_info以及各种硬件的platform_data绝大多数纯属垃圾冗余代码。为了解决这一问题，ARM内核版本3.x之后引入了原先在Power PC等其他体系架构已经使用的Flattened Device Tree。
+
+“A data structure by which bootloaders pass hardware layout to Linux in a device-independent manner, simplifying hardware probing.”开源文档中对设备树的描述是，一种描述硬件资源的数据结构，它通过bootloader将硬件资源传给内核，使得内核和硬件资源描述相对独立(也就是说*.dtb文件由Bootloader读入内存，之后由内核来解析)。
+
+Device Tree可以描述的信息包括CPU的数量和类别、内存基地址和大小、总线和桥、外设连接、中断控制器和中断使用情况、GPIO控制器和GPIO使用情况、Clock控制器和Clock使用情况。
+
+另外，设备树对于可热插拔的热备不进行具体描述，它只描述用于控制该热插拔设备的控制器。
+
+设备树的主要优势：对于同一SOC的不同主板，只需更换设备树文件.dtb即可实现不同主板的无差异支持，而无需更换内核文件。
+
+注：要使得3.x之后的内核支持使用设备树，除了内核编译时需要打开相对应的选项外，bootloader也需要支持将设备树的数据结构传给内核。
+
+### dts、dtsi文件的基本语法
+
+DTS文件的内容包括一系列节点以及描述节点的属性。
+
+“/”为root节点。在一个.dts文件中，有且仅有一个root节点；在root节点下有“node1”，“node2”子节点，称root为“node1”和“node2”的parent节点，除了root节点外，每个节点有且仅有一个parent；其中子节点node1下还存在子节点“child-nodel1”和“child-node2”。
+
+注：如果看过内核/arch/arm/boot/dts目录的读者看到这可能有一个疑问。在每个.dsti和.dts中都会存在一个“/”根节点，那么如果在一个设备树文件中include一个.dtsi文件，那么岂不是存在多个“/”根节点了么。其实不然，编译器DTC在对.dts进行编译生成dtb时，会对node进行合并操作，最终生成的dtb只有一个root node。Dtc会进行合并操作这一点从属性上也可以得到验证。这个稍后做讲解。
+
+在节点的{}里面是描述该节点的属性（property），即设备的特性。它的值是多样化的：
+
+1.它可以是字符串string，如`compatible = "spidev";`；也可能是字符串数组string-list，如`compatible = "altr,a10sycon-gpio";`
+
+2.它也可以是32 bit unsigned integers，如cell，整形用<>表示`reg = <1>;`
+
+3.它也可以是binary data，十六进制用[]表示`a-byte-data-property = [0x01 0x23 0x03];`
+
+4.它也可能是空，如`gpio-controller;`
 
 ## 板级文件--board.c
 
@@ -68,7 +97,37 @@ static __init void dm365_evm_init(void)
        dm365_init_spi0(BIT(0), dm365_evm_spi_info,
                ARRAY_SIZE(dm365_evm_spi_info));
    }
+
 ```
+```cpp
+static struct spi_board_info mx51_3ds_spi_nor_device[] = {
+            {
+             .modalias = "m25p80",
+             .max_speed_hz = 25000000,      /* max spi clock (SCK) speed in HZ */
+             .bus_num = 1,
+             .chip_select = 1,
+             .mode = SPI_MODE_0,
+             .platform_data = NULL,},
+}
+```
+  
+一个struct spi_board_info对象对应一个spi设备。上面代码中：
+
+`.modalias = "m25p80"`, 
+spi设备名字，设备驱动探测时会用到该项；
+
+`.max_speed_hz = 25000000`, 
+记录了这个spi设备支持的最大速度；
+
+`.bus_num = 1`, 
+记录了该spi设备是连接在哪个spi总线上的，所在总线的编号；
+
+`.chip_select = 1`, 
+该spi设备的片选编号；
+
+`.mode = SPI_MODE_0`, 
+和这个spi设备支持spi总线的工作模式。
+
 2. `dm365_init_spi0`在arch/arm/mach-davinci/dm365.c中，设备移植时的重要工作就是向spi_board_info结构体中填充内容，先看看spi初始化函数的实现。
 
 ```java
